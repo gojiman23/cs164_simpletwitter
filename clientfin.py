@@ -37,7 +37,7 @@ def login(s):
 			#s.sendto(choice, (host, port))
 			s.send(choice)
 			if choice == 'view':
-				print 'TODO'
+				view_handler(s)
 			elif choice == 'edit':
 				edit_handler(s)
 			elif choice == 'post':
@@ -46,6 +46,23 @@ def login(s):
 				print ('Returning to login page.')
 				logged_out = 1
 
+def view_handler(s):
+	msg = raw_input('Would you like to see all of your unread messages or messages from one subscription? (all/one/cancel): ')
+	if msg == 'cancel':
+		print 'Going back'
+	s.send(msg)
+	newlist = s.recv(1024)
+	if msg == 'all':
+		print 'New messages: ' + newlist[27:]
+	elif msg == 'one':
+		print 'Subscriptions to choose from: ' + newlist
+		msg = raw_input('Which subscription would you like to choose?: ')
+		s.send(msg)
+		newlist = s.recv(1024)
+		print 'Messages from ' + msg + ': ' + newlist
+		
+	
+	
 def edit_handler(s):
 	msg = raw_input('Would you like to add or delete a subscription? (add/delete/cancel): ')
 	s.send(msg)
@@ -54,10 +71,12 @@ def edit_handler(s):
 		name = raw_input('Who would you like to subscribe to?: ')
 		s.send(name)
 		msg = s.recv(1024)
-		if msg == '0':
+		if msg == 'cancel':
+			print 'Going back'
+		elif msg == '0':
 			print 'Invalid name.'
 		else:
-			print 'You are now subscribed to ' + name
+			print 'New subscription list: ' + msg
 	elif msg == 'delete':
 		subscribed = s.recv(1024)
 		print 'Subscribers to choose from: ' + subscribed
@@ -78,8 +97,10 @@ def msg_handler(s):
 		else:
 			s.send(msg)
 			reply = s.recv(1024)
+			#prints error message if post too long
 			if reply[0] == 'E':
 				print reply
+			#takes in hashtags
 			else:
 				msg = raw_input(reply)
 				msg_good = 1

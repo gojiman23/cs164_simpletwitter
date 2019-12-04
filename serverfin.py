@@ -7,40 +7,59 @@ from socket import timeout
 from thread import *
 import threading
 import string
+from collections import defaultdict
 
 HOST = ''   # Symbolic name meaning all available interfaces
 PORT = 8888 # Arbitrary non-privileged port
 
-#list of usernames/passwords
-login_info = [('test1', 'pass1'), ('test2', 'pass2'), ('test3', 'pass3')]
-usernames = ['test1', 'test2', 'test3']
-passwords = ['pass1']
-#list of subscriptions
-sub1 = []
-sub2 = []
-sub3 = []
+#list of all users
+all_users = []
+#list of current users
+curr_users = []
+
+#user class
+class User:
+	un = ''
+	pw = ''
+	subList = []
+	msgList = defaultdict(list)
+	hashList = defaultdict(list)
+	numUnread = 0
+	
+#hard-coding users
+user1 = User()
+user1.un = "Bob"
+user1.pw = "Bobby"
+
+user2 = User()
+user2.un = "Tom"
+user2.pw = "Tommy"
+
+user3 = User()
+user3.un = "Rick"
+user3.pw = "Ricky"
+
+user4 = User()
+user4.un = "test"
+user4.pw = "test"
+
+all_users.append(user1)
+all_users.append(user2)
+all_users.append(user3)
+all_users.append(user4)
 
 #check if username is valid
 def verify_un(name):
-	if name == usernames[0]:
-		return True
-	if name == usernames[1]:
-		return True
-	if name == usernames[2]:
-		return True
-	else:
-		return False
-
+	for item in all_users:
+		if item.un == name:
+			return item
+	return -1
 #check if password is valid		
 def verify_pw(name):
-	if name == passwords[0]:
-		return True
-	if name == passwords[1]:
-		return True
-	if name == passwords[2]:
-		return True
-	else:
-		return False
+	for item in all_users:
+		if item.pw == name:
+			return item
+	return -1
 
 def admin(server):
 	print 'ADMIN FILLER'
@@ -66,11 +85,6 @@ def server_start():
 	print 'Socket bind complete'
 	
 	return s
-
-def verify(name_list, un):
-	for item in name_list:
-		if item[0] == un:
-			return item[1]
 	
 def newClient(conn, addr):
 	while (1):
@@ -81,16 +95,25 @@ def newClient(conn, addr):
 			username = conn.recv(1024)
 			
 			pw = conn.recv(1024)
-			if verify_un(username) and verify_pw(pw):
+			if verify_un(username) != -1 and verify_pw(pw) != -1:
 				print 'Client login successful'
 				conn.send('1')
 				logged_in = True
 			else:
 				conn.send('0')
 		
+		#set current user
+		for item in all_users:
+			if item.un == username:
+				curr = item
+		
+		curr_users.append(curr)
+		print 'Current users: '
+		for item in curr_users:
+			print item.un
 		print 'Beginning simple twitter app'
 		#show user unread messages	
-		msg = "Welcome to Twitter.\nYou have 6 unread messages"
+		msg = 'Welcome to Twitter.\nYou have ' + str(curr.numUnread) + ' unread messages'
 		conn.send(msg)
 
 		#menu handler
@@ -99,63 +122,88 @@ def newClient(conn, addr):
 			choice = conn.recv(1024)
 
 			if choice == 'view':
-			#TODO: view messages option
-				print 'TODO: view messages option'
+				view_handler(conn, username, curr)
+				
 			elif choice == 'edit':
-				edit_handler(conn, username)
+				edit_handler(conn, username, curr)
 
 			elif choice == 'post':
-				msg_handler(conn)
+				msg_handler(conn, username, curr)
 
 			elif choice == 'logout':
 				print 'Bye!'
 				# msg = 'Logout successful.'
 				# conn.send(msg)		
-				logged_out = True	
-	
+				logged_out = True
+				#reset curr
+				curr.msgList = defaultdict(list)
+				curr.hashList = defaultdict(list)
+				curr.numUnread = 0
+				curr_users.remove(curr)	
 
-def edit_handler(conn, username):
+def view_handler(conn, username, curr):
+	#receive all/one choice
+	d = conn.recv(1024)	
+	if d == 'all':
+		conn.send(str(curr.msgList))
+	if d == 'one':
+		newList = ''
+		for item in curr.subList:
+			newList += item.un
+			newList += ', '
+		conn.send(newList)
+		choice = conn.recv(1024)
+		conn.send(str(curr.msgList[choice]))
+
+def edit_handler(conn, username, curr):
 	#receive editing choice
 	d = conn.recv(1024)
 	if d == 'add':
 		#receive name of person they want to subscribe to
 		name = conn.recv(1024)
-		if verify_un(name):
-			conn.send('1')
-			if username == 'test1':
-				sub1.append(name)
-			if username == 'test2':
-				sub2.append(name)
-			if username == 'test3':
-				sub3.append(name)
+		if verify_un(name) != -1:
+			curr.subList.append(verify_un(name))
+			newsubs = ''
+			for item in curr.subList:
+				newsubs += item.un
+				newsubs += ', '
+			conn.send(newsubs)
 		else:
 			conn.send('0')
 	elif d == 'delete':
-		def removesub(sub):
-			name = conn.recv(1024)
-			sub.remove(name)
-			conn.send(str(sub))			
-		if username == 'test1':
-			conn.send(str(sub1))
-			removesub(sub1)
-		elif username == 'test2':
-			conn.send(str(sub2))
-			removesub(sub2)
-		elif username == 'test3':
-			conn.send(str(sub3))	
-			removesub(sub3)
-
-def msg_handler(conn):
+		#removes a subscription from the given list
+		conn.send(str(curr.subList))
+		name = conn.recv(1024)
+		if verify_un(name) != -1:
+			curr.subList.remove(verify_un(name))
+		conn.send(str(curr.subList))
+		
+def msg_handler(conn, username, curr):
 	msg_good = 0
 	while not msg_good:
 		msg = conn.recv(1024)
 		if len(msg) > 140:
 			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
 		else:
-			reply = 'Would you like to add any hashtags?'
+			reply = 'Please enter any hashtags (optional, put no if N/A): '
+			msg_fin = msg	#store for later
 			msg_good = 1
-		conn.send(reply)
+	conn.send(reply)
+	#TODO: add handler for multiple hashtags
 	hashtags = conn.recv(1024)
+	if hashtags == 'no':	#only accept if hashtag entry is not 'no'
+		hashtags = ''
+	
+	
+	#adds message to list of subscribers
+	for item in curr_users:
+		if item.un != curr.un:
+			for name in item.subList:
+				if curr.un == name.un:
+					name.msgList[name.un].append(msg)
+					name.hashList[hashtags].append(msg)
+					name.numUnread += 1
+
 
 # MAIN
 event = threading.Event()
