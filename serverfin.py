@@ -10,6 +10,8 @@ import string
 
 #list of usernames/passwords
 login_info = [('test1', 'pass1'), ('test2', 'pass2'), ('test3', 'pass3')]
+#list of subscriptions
+sub1 = [], sub2 = [], sub3 = []
 
 def admin(server):
 	print 'ADMIN FILLER'
@@ -41,42 +43,117 @@ def server_start():
 	
 def newClient(conn, addr):
 	logged_in = 0
-	conn.send('test')
-	def verify(name_list, un, pw):
+	#conn.send('test')
+	def verify(name_list, un):
 		for item in name_list:
 			if item[0] == un:
-				if item[1] == pw:
-					return 1
+				return 1
 	
-	while (not logged_in):
-		print 'receving'
-		username = conn.recv(1024)
-		pw = conn.recv(1024)
-		print 'received'
-		if (username, pw) in login_info:
-			logged_in = 1
-			print 'Log in successful'
-			reply = 'Login verified'
-			conn.send(reply)
-		else:
-			reply = 'Verification failed. Try again'
-			conn.send(reply)
-	
-	logged_out = 0	
-	#show user unread messages	
-	msg = "You have 6 unread  messages"
-	conn.send(msg)
+	while(1):
+		#receive/verify login credentials
+		while (not logged_in):
+			print 'receving'
+			username = conn.recv(1024)
+			pw = conn.recv(1024)
+			print 'received'
+			if verify(login_info, username) = 1:
+				if(login_info[username] == pw):
+					logged_in = 1
+					print 'Log in successful'
+					reply = 'Login verified'
+					conn.send(reply)
+			else:
+				reply = 'Verification failed. Try again'
+				conn.send(reply)
+		
+		logged_out = 0	
+		#show user unread messages	
+		msg = "You have 6 unread  messages"
+		conn.send(msg)
 
-	while not logged_out:
-		menu = 'Menu: (type option to pick) \n See Offline Messages(view) \n Edit Subscriptions (edit) \n Post a message \n Hashtag Search \n Logout (logout)'
-		conn.send(menu)
+		#menu handler
+		while not logged_out:
+			#receive client's choice
+			choice = conn.recv(1024)
+
+			if choice == 'view':
+				#TODO: view messages option
+
+			elif choice == 'edit':
+				edit_handler(conn)
+
+			elif choice == 'post':
+				msg_handler(conn)
+
+			elif choice == 'logout':
+				print 'Bye!'
+				# msg = 'Logout successful.'
+				# conn.send(msg)		
+				logged_out = 1	
+
+def edit_handler(conn):
+	d = conn.recv(1024)
+	if d == 'add':
+		name_good = 0
+		name = s.recv(1024)
+		if verify(login_info, name):
+			name_good = 1
+			conn.send(name_good)
+			if username == 'test1':
+				sub1.append(name)
+			if username == 'test2':
+				sub1.append(name)
+			if username == 'test3':
+				sub1.append(name)
+		else:
+			conn.send(name_good)
+	elif d == 'delete':
+		def removesub(sub):
+			name = conn.recv(1024)
+			if verify(sub, name):
+				sub.remove(name)
+			conn.send(sub)			
+		if username == 'test1':
+			conn.send(str(sub1))
+			removesub(sub1)
+		elif username == 'test2':
+			conn.send(str(sub2))
+			removesub(sub2)
+		elif username == 'test3':
+			conn.send(str(sub3))	
+			removesub(sub3)
+
+def msg_handler(conn):
+	msg_good = 0
+	while not msg_good:
+		msg = conn.recv(1024)
+		if len(msg) > 140:
+			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
+		else:
+			reply = 'Would you like to add any hashtags?'
+			msg_good = 1
+		conn.send(reply)
+	hashtags = conn.recv(1024)
+
+# MAIN
+event = threading.Event()
+
+s = server_start()
+s.listen(10)
+print 'Server now listening'
+
+start_new_thread(admin, (s, ))
+
+while 1:
+		#accept new connection
+		conn, clientAddr = s.accept()
 		
-		choice = s.recv(1024)
+		#display newly connected client
+		print 'Connected with ' + clientAddr[0] 
 		
-		if choice == 'logout':
-			print 'Bye!'
-			msg = 'Logout successful.'
-			conn.send(msg)	
+		start_new_thread(newClient, (conn, clientAddr,))
+	
+s.close()
 
 #~ while(1):
 	#~ d = s.recvfrom(1024)
@@ -185,25 +262,4 @@ def newClient(conn, addr):
 			#~ print 'Bye!'
 			#~ msg = 'Logout successful.'
 			#~ s.sendto(msg, addr)
-			#~ continue			
-			
-# MAIN
-event = threading.Event()
-
-s = server_start()
-s.listen(10)
-print 'Server now listening'
-
-start_new_thread(admin, (s, ))
-
-while 1:
-		#accept new connection
-		conn, clientAddr = s.accept()
-		
-		#display newly connected client
-		print 'Connected with ' + clientAddr[0] 
-		
-		start_new_thread(newClient, (conn, clientAddr,))
-	
-s.close()
-
+			#~ continue	
