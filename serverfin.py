@@ -16,6 +16,10 @@ PORT = 8888 # Arbitrary non-privileged port
 all_users = []
 #list of current users
 curr_users = []
+#list of all hashtags
+all_hashtags = defaultdict(list)
+
+msgCount = 0
 
 #user class
 class User:
@@ -62,7 +66,17 @@ def verify_pw(name):
 	return -1
 
 def admin(server):
-	print 'ADMIN FILLER'
+	print 'ADMIN COMMANDS:'
+	print '1. messagecount'
+	
+	command = raw_input('Enter above commands at any time. \n')
+	
+	if command == 'messagecount':
+		print 'Total messages since start of server: ' + str(msgCount)
+	
+	else:
+		print 'Invalid choice.'
+	
 
 def server_start():	 
 	# Datagram (udp) socket
@@ -122,13 +136,16 @@ def newClient(conn, addr):
 			choice = conn.recv(1024)
 
 			if choice == 'view':
-				view_handler(conn, username, curr)
+				view_handler(conn, curr)
 				
 			elif choice == 'edit':
-				edit_handler(conn, username, curr)
+				edit_handler(conn, curr)
 
 			elif choice == 'post':
-				msg_handler(conn, username, curr)
+				msg_handler(conn, curr)
+				
+			elif choice == 'hashtag':
+				hash_handler(conn, curr)
 
 			elif choice == 'logout':
 				print 'Bye!'
@@ -141,7 +158,7 @@ def newClient(conn, addr):
 				curr.numUnread = 0
 				curr_users.remove(curr)	
 
-def view_handler(conn, username, curr):
+def view_handler(conn, curr):
 	#receive all/one choice
 	d = conn.recv(1024)	
 	if d == 'all':
@@ -155,7 +172,7 @@ def view_handler(conn, username, curr):
 		choice = conn.recv(1024)
 		conn.send(str(curr.msgList[choice]))
 
-def edit_handler(conn, username, curr):
+def edit_handler(conn, curr):
 	#receive editing choice
 	d = conn.recv(1024)
 	if d == 'add':
@@ -169,7 +186,12 @@ def edit_handler(conn, username, curr):
 				newsubs += ', '
 			conn.send(newsubs)
 		else:
-			conn.send('0')
+			#TODO: fix hash sub
+			if name[0:4] == 'HASH:':
+				curr.hashList.append(name[6:])
+				conn.send(curr.hashList)
+			else:
+				conn.send('0')
 	elif d == 'delete':
 		#removes a subscription from the given list
 		conn.send(str(curr.subList))
@@ -178,32 +200,44 @@ def edit_handler(conn, username, curr):
 			curr.subList.remove(verify_un(name))
 		conn.send(str(curr.subList))
 		
-def msg_handler(conn, username, curr):
+def msg_handler(conn, curr):
 	msg_good = 0
 	while not msg_good:
 		msg = conn.recv(1024)
 		if len(msg) > 140:
 			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
 		else:
-			reply = 'Please enter any hashtags (optional, put no if N/A): '
-			msg_fin = msg	#store for later
+			reply = 'Please enter any hashtags (hit enter if none): '
 			msg_good = 1
 	conn.send(reply)
 	#TODO: add handler for multiple hashtags
-	hashtags = conn.recv(1024)
-	if hashtags == 'no':	#only accept if hashtag entry is not 'no'
-		hashtags = ''
-	
-	
+	hashtag = conn.recv(1024)
 	#adds message to list of subscribers
 	for item in curr_users:
 		if item.un != curr.un:
 			for name in item.subList:
 				if curr.un == name.un:
 					name.msgList[name.un].append(msg)
-					name.hashList[hashtags].append(msg)
 					name.numUnread += 1
-
+			#TODO: add to hash list
+			for hasht in item.hashList:
+				if hashtag == hasht:
+					item.msgList[hasht].append(msg)
+					item.numUnread += 1
+	all_hashtags[hashtag].append(msg)
+	msgCount += 1
+	
+def hash_handler(conn, curr):
+	d = conn.recv(1024)
+	
+	#only send up to 10 hashtags
+	if len(all_hashtags[d]) <= 10:
+		conn.send(str(all_hashtags[d]))
+	else:
+		max = len(all_hashtags[d])
+		min = max-10
+		conn.send(str(all_hashtags[d][min:max]))
+	
 
 # MAIN
 event = threading.Event()
@@ -219,122 +253,13 @@ while 1:
 	conn, clientAddr = s.accept()
 	
 	#display newly connected client
-	print 'Connected with ' + clientAddr[0] 
+	#print 'Connected with ' + clientAddr[0] 
 		
 				
 	client_msg = conn.recvfrom(1024)
-	print client_msg[0]
+	#print client_msg[0]
 	conn.send('Server echo')
 		
 	start_new_thread(newClient, (conn, clientAddr,))
 	
 s.close()
-
-#~ while(1):
-	#~ d = s.recvfrom(1024)
-	#~ addr = d[1]
-#~ 
-	#~ if d[0] == 'login':
-	#~ #verify username
-		#~ d = s.recvfrom(1024)
-		#~ addr = d[1]
-		#~ if d[0] == users[0]:
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ if d[0] == passwords[0]:
-				#~ print 'Login success!'
-				#~ reply = 'Login verified'
-				#~ logged_in = 1
-				#~ s.sendto(reply , addr)
-			#~ else:
-				#~ reply = 'Verification failed. Try again'
-				#~ s.sendto(reply, addr)
-		#~ elif d[0] == users[1]:
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ if d[0] == passwords[1]:
-				#~ print 'Login success!'
-				#~ reply = 'Login verified'
-				#~ logged_in = 1
-				#~ s.sendto(reply , addr)
-			#~ else:
-				#~ reply = 'Verification failed. Try again'
-				#~ s.sendto(reply, addr)
-		#~ elif d[0] == users[2]:
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ if d[0] == passwords[2]:
-				#~ print 'Login success!'
-				#~ reply = 'Login verified'
-				#~ logged_in = 1
-				#~ s.sendto(reply , addr)
-			#~ else:
-				#~ reply = 'Verification failed. Try again'
-				#~ s.sendto(reply, addr)		
-			#~ 
-		#~ else:
-			#~ #catch extra password
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ reply = 'Verification failed. Try again'
-			#~ s.sendto(reply, addr) passwords[1]:
-				#~ print 'Login success!'
-				#~ reply = 'Login verified'
-				#~ logged_in = 1
-				#~ s.sendto(reply , addr)
-			#~ else:
-				#~ reply = 'Verification failed. Try again'
-				#~ s.sendto(reply, addr)
-		#~ elif d[0] == users[2]:
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ if d[0] == passwords[2]:
-				#~ print 'Login success!'
-				#~ reply = 'Login verified'
-				#~ logged_in = 1
-				#~ s.sendto(reply , addr)
-			#~ else:
-				#~ reply = 'Verification failed. Try again'
-				#~ s.sendto(reply, addr)		
-			#~ 
-		#~ else:
-			#~ #catch extra password
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ reply = 'Verification failed. Try again'
-			#~ s.sendto(reply, addr)
-			#~ 
-	#~ elif d[0] == 'logged in':
-		#~ #show user unread messages	
-		#~ msg = "You have 6 unread  messages"
-		#~ s.sendto(msg, addr)
-#~ 
-		#~ menu = 'Menu: (type option to pick) \n See Offline Messages(view) \n Edit Subscriptions (edit) \n Post a message \n Hashtag Search \n Logout (logout)'
-		#~ s.sendto(menu, addr)
-		#~ 
-		#~ d = s.recvfrom(1024)
-		#~ choice = d[0]
-		#~ addr = d[1]
-		#~ 
-		#~ if(choice == 'view'):
-			#~ msg = 'Would you like to see all messages or would you like to see messages from a particular subscription? (all/particular)'
-			#~ s.sendto(msg, addr)
-			#~ d = s.recvfrom
-		#~ 
-		#~ elif (choice == 'edit'):
-			#~ msg = 'Would you like to add or delete a subscription? (add/delete)'
-			#~ s.sendto(msg, addr)
-			#~ d = s.recvfrom(1024)
-			#~ addr = d[1]
-			#~ if d[0] == 'add':
-				#~ name = raw_input('Who would you like to subscribe to?')
-				#~ if name == users[0] or name == users[1] or name == users[2]:
-					#~ print 'You are now subscribed to ' + name
-					#~ #TODO: append subscribed user to subscribee's persona list
-					#~ 
-		#~ 
-		#~ elif(choice == 'logout'):
-			#~ print 'Bye!'
-			#~ msg = 'Logout successful.'
-			#~ s.sendto(msg, addr)
-			#~ continue	

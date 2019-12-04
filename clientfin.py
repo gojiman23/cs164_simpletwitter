@@ -42,6 +42,8 @@ def login(s):
 				edit_handler(s)
 			elif choice == 'post':
 				msg_handler(s)
+			elif choice == 'hashtag':
+				hash_handler(s)
 			elif choice == 'logout':
 				print ('Returning to login page.')
 				logged_out = 1
@@ -50,16 +52,17 @@ def view_handler(s):
 	msg = raw_input('Would you like to see all of your unread messages or messages from one subscription? (all/one/cancel): ')
 	if msg == 'cancel':
 		print 'Going back'
-	s.send(msg)
-	newlist = s.recv(1024)
-	if msg == 'all':
-		print 'New messages: ' + newlist[27:]
-	elif msg == 'one':
-		print 'Subscriptions to choose from: ' + newlist
-		msg = raw_input('Which subscription would you like to choose?: ')
+	else:
 		s.send(msg)
 		newlist = s.recv(1024)
-		print 'Messages from ' + msg + ': ' + newlist
+		if msg == 'all':
+			print 'New messages: ' + newlist[27:]
+		elif msg == 'one':
+			print 'Subscriptions to choose from: ' + newlist
+			msg = raw_input('Which subscription would you like to choose?: ')
+			s.send(msg)
+			newlist = s.recv(1024)
+			print 'Messages from ' + msg + ': ' + newlist
 		
 	
 	
@@ -105,6 +108,16 @@ def msg_handler(s):
 				msg = raw_input(reply)
 				msg_good = 1
 				s.send(msg)
+
+def hash_handler(s):
+	msg = raw_input('What hashtag would you like to search up?: ')
+	if msg == 'cancel':
+		print 'Going back'
+	else:
+		s.send(msg)
+		newlist = s.recv(1024)
+		print 'Messages under hashtag ' + msg + ': ' + newlist
+	
 						
 # MAIN 
 host = ''
