@@ -4,73 +4,64 @@ import socket   #for sockets
 import sys  #for exit
 import time
 from socket import timeout
-from check import ip_checksum
 
-# create dgram udp socket
+#from check import ip_checksum
+ 
+host = '';
+port = 8888;
+
 try:
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 except socket.error:
     print 'Failed to create socket'
     sys.exit()
- 
-host = 'localhost';
-port = 8888;
 
-packetStatus = 0
+s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+err = s.connect_ex((host, port))
+if err > 0:
+	print 'Error: unable to connect'
+	sys.exit()
+
+#login before performing other code
 logged_in = 0
-
 while(1):
-# testVariable = 0
-	while(not logged_in):
-		username = raw_input('Enter username : ')
-		password = raw_input('Enter password : ')
+	if not logged_in:	
 		
-		try :
-			#Set the whole string
-			s.sendto(username, (host, port))
-			s.sendto(password, (host, port))
+			data = s.recv(1024)
+			print data
+			username = raw_input('Enter username : ')
+			password = raw_input('Enter password : ')
 			
-			#start the timer for timeout
-			#s.settimeout(10)
-			
-			try:
-				# receive data from client (data, addr)
-				d = s.recvfrom(1024)
-				reply = d[0]
-				addr = d[1]
-			
-			except socket.timeout:
+			s.send(username)
+			s.send(password)
+			print 'sent'
+			d = s.recv(1024)
 				
-				s.sendto(username, (host, port))
-				s.sendto(password, (host, port))
 				
-				d = s.recvfrom(1024)
-				reply = d[0]
-				addr = d[1]
-			
-			
 			print 'Server reply : ' + reply
-			if(reply == 'login verified'):
+			if(reply == 'Login verified'):
 				logged_in = 1
-		   
-			
-		except socket.error, msg:
-			#print 'Error Code : ' + str(msg[0]) + ' Message ' + msg[1]
-			sys.exit()
+				
 
-	d = s.recvfrom(1024)
-	reply = d[0]
-	print reply
+	else:
+	# testVariable = 0
+		msg = 'logged in'
+		s.sendto(msg, (host, port))
+		d = s.recvfrom(1024)
+		reply = d[0]
+		print reply
+		
 
-	d = s.recvfrom(1024)
-	reply = d[0]
-	print reply
+		d = s.recvfrom(1024)
+		reply = d[0]
+		print reply
 
-	choice = raw_input()
-	s.sendto(choice, (host, port))
+		choice = raw_input()
+		s.sendto(choice, (host, port))
 
-	d = s.recvfrom(1024)
-	if (d[0] == 'Logout successful.'):
-		print ('Returning to login page.')
-		logged_in = 0
+		d = s.recvfrom(1024)
+		if (d[0] == 'Logout successful.'):
+			print ('Returning to login page.')
+			logged_in = 0
 
