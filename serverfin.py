@@ -8,18 +8,44 @@ from thread import *
 import threading
 import string
 
+HOST = ''   # Symbolic name meaning all available interfaces
+PORT = 8888 # Arbitrary non-privileged port
+
 #list of usernames/passwords
 login_info = [('test1', 'pass1'), ('test2', 'pass2'), ('test3', 'pass3')]
+usernames = ['test1', 'test2', 'test3']
+passwords = ['pass1']
 #list of subscriptions
-sub1 = [], sub2 = [], sub3 = []
+sub1 = []
+sub2 = []
+sub3 = []
+
+#check if username is valid
+def verify_un(name):
+	if name == usernames[0]:
+		return True
+	if name == usernames[1]:
+		return True
+	if name == usernames[2]:
+		return True
+	else:
+		return False
+
+#check if password is valid		
+def verify_pw(name):
+	if name == passwords[0]:
+		return True
+	if name == passwords[1]:
+		return True
+	if name == passwords[2]:
+		return True
+	else:
+		return False
 
 def admin(server):
 	print 'ADMIN FILLER'
 
-def server_start(): 
-	HOST = ''   # Symbolic name meaning all available interfaces
-	PORT = 8888 # Arbitrary non-privileged port
-	 
+def server_start():	 
 	# Datagram (udp) socket
 	try :
 		s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -40,35 +66,31 @@ def server_start():
 	print 'Socket bind complete'
 	
 	return s
+
+def verify(name_list, un):
+	for item in name_list:
+		if item[0] == un:
+			return item[1]
 	
 def newClient(conn, addr):
-	logged_in = 0
-	#conn.send('test')
-	def verify(name_list, un):
-		for item in name_list:
-			if item[0] == un:
-				return 1
-	
-	while(1):
+	while (1):
+		logged_in = False
+		logged_out = False
 		#receive/verify login credentials
 		while (not logged_in):
-			print 'receving'
 			username = conn.recv(1024)
+			
 			pw = conn.recv(1024)
-			print 'received'
-			if verify(login_info, username) = 1:
-				if(login_info[username] == pw):
-					logged_in = 1
-					print 'Log in successful'
-					reply = 'Login verified'
-					conn.send(reply)
+			if verify_un(username) and verify_pw(pw):
+				print 'Client login successful'
+				conn.send('1')
+				logged_in = True
 			else:
-				reply = 'Verification failed. Try again'
-				conn.send(reply)
+				conn.send('0')
 		
-		logged_out = 0	
+		print 'Beginning simple twitter app'
 		#show user unread messages	
-		msg = "You have 6 unread  messages"
+		msg = "Welcome to Twitter.\nYou have 6 unread messages"
 		conn.send(msg)
 
 		#menu handler
@@ -77,10 +99,10 @@ def newClient(conn, addr):
 			choice = conn.recv(1024)
 
 			if choice == 'view':
-				#TODO: view messages option
-
+			#TODO: view messages option
+				print 'TODO: view messages option'
 			elif choice == 'edit':
-				edit_handler(conn)
+				edit_handler(conn, username)
 
 			elif choice == 'post':
 				msg_handler(conn)
@@ -89,30 +111,30 @@ def newClient(conn, addr):
 				print 'Bye!'
 				# msg = 'Logout successful.'
 				# conn.send(msg)		
-				logged_out = 1	
+				logged_out = True	
+	
 
-def edit_handler(conn):
+def edit_handler(conn, username):
+	#receive editing choice
 	d = conn.recv(1024)
 	if d == 'add':
-		name_good = 0
-		name = s.recv(1024)
-		if verify(login_info, name):
-			name_good = 1
-			conn.send(name_good)
+		#receive name of person they want to subscribe to
+		name = conn.recv(1024)
+		if verify_un(name):
+			conn.send('1')
 			if username == 'test1':
 				sub1.append(name)
 			if username == 'test2':
-				sub1.append(name)
+				sub2.append(name)
 			if username == 'test3':
-				sub1.append(name)
+				sub3.append(name)
 		else:
-			conn.send(name_good)
+			conn.send('0')
 	elif d == 'delete':
 		def removesub(sub):
 			name = conn.recv(1024)
-			if verify(sub, name):
-				sub.remove(name)
-			conn.send(sub)			
+			sub.remove(name)
+			conn.send(str(sub))			
 		if username == 'test1':
 			conn.send(str(sub1))
 			removesub(sub1)
@@ -145,13 +167,18 @@ print 'Server now listening'
 start_new_thread(admin, (s, ))
 
 while 1:
-		#accept new connection
-		conn, clientAddr = s.accept()
+	#accept new connection
+	conn, clientAddr = s.accept()
+	
+	#display newly connected client
+	print 'Connected with ' + clientAddr[0] 
 		
-		#display newly connected client
-		print 'Connected with ' + clientAddr[0] 
+				
+	client_msg = conn.recvfrom(1024)
+	print client_msg[0]
+	conn.send('Server echo')
 		
-		start_new_thread(newClient, (conn, clientAddr,))
+	start_new_thread(newClient, (conn, clientAddr,))
 	
 s.close()
 
