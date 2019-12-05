@@ -68,12 +68,20 @@ def verify_pw(name):
 def admin(server):
 	print 'ADMIN COMMANDS:'
 	print '1. messagecount'
+	print '2. usercount'
+	print '3. new user'
 	
 	command = raw_input('Enter above commands at any time. \n')
 	
 	if command == 'messagecount':
 		print 'Total messages since start of server: ' + str(msgCount)
-	
+	elif command == 'usercount':
+		print len(curr_users)
+	elif command == 'new user':
+		#hard-coded for now
+		user5 = User()
+		user5.un = raw_input('Enter the username for this user: ')
+		user5.un = raw_input('Enter the password for this user: ')
 	else:
 		print 'Invalid choice.'
 	
