@@ -28,9 +28,10 @@ def login(s):
 		#deals with menu/choices
 		logged_out = 0
 		while(not logged_out):
-			# msg = 'logged in'
-			# s.sendto(msg, (host, port))
-
+			#catch trash or new message
+			possible = s.recv(1024)
+			if possible[0:2] == 'New':
+				print possible
 			print '\nMenu: (type option to pick) \n See Offline Messages (view) \n Edit Subscriptions (edit) \n Post a message (post) \n Hashtag Search (hashtag) \n Logout (logout)'
 
 			choice = raw_input()
@@ -105,10 +106,10 @@ def msg_handler(s):
 				print reply
 			#takes in hashtags
 			else:
-				msg = raw_input(reply)
+				hashtag = raw_input(reply)	
 				msg_good = 1
-				s.send(msg)
-
+				s.send(hashtag)
+	
 def hash_handler(s):
 	msg = raw_input('What hashtag would you like to search up?: ')
 	if msg == 'cancel':
@@ -144,6 +145,3 @@ print d[0]
 while(1):
 	#login before performing other code
 	login(s)
-
-
-	

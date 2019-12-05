@@ -29,6 +29,8 @@ class User:
 	msgList = defaultdict(list)
 	hashList = defaultdict(list)
 	numUnread = 0
+	msg_rcvd = 0					#bit to store if new message received while logged in
+	to_send = "New message from "		#holder to send out to a logged in user
 	
 #hard-coding users
 user1 = User()
@@ -140,6 +142,16 @@ def newClient(conn, addr):
 
 		#menu handler
 		while not logged_out:
+			#send out message to logged in subscriber from previous iteration
+			if curr.msg_rcvd == 0:
+				conn.send('Filler')
+			else:
+				conn.send(curr.to_send)
+				#reset
+				curr.msg_rcvd = 0
+				curr.to_send = 'New message from '
+
+
 			#receive client's choice
 			choice = conn.recv(1024)
 
@@ -186,6 +198,8 @@ def edit_handler(conn, curr):
 	if d == 'add':
 		#receive name of person they want to subscribe to
 		name = conn.recv(1024)
+		if name = curr.un:
+			print 'You cannot subscribe to yourself.'
 		if verify_un(name) != -1:
 			curr.subList.append(verify_un(name))
 			newsubs = ''
@@ -221,13 +235,21 @@ def msg_handler(conn, curr):
 	#TODO: add handler for multiple hashtags
 	hashtag = conn.recv(1024)
 	#adds message to list of subscribers
-	for item in curr_users:
+	for item in all_users:
+		#avoids running for duplicates
 		if item.un != curr.un:
 			for name in item.subList:
+				#if user that posted in sub list of another logged in user
 				if curr.un == name.un:
-					name.msgList[name.un].append(msg)
-					name.numUnread += 1
-			#TODO: add to hash list
+					#send msg immedidately if subscriber is logged in
+					if name.un in curr_users:
+						name.msg_rcvd = 1
+						name.to_send = name.to_send + curr.un + ': ' + msg
+					else:
+						name.msgList[name.un].append(msg)
+						name.numUnread += 1
+					
+			#TODO: add to hash list - EC, don't need
 			for hasht in item.hashList:
 				if hashtag == hasht:
 					item.msgList[hasht].append(msg)
