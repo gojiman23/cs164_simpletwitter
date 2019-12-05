@@ -84,6 +84,7 @@ def admin(server):
 		user5 = User()
 		user5.un = raw_input('Enter the username for this user: ')
 		user5.un = raw_input('Enter the password for this user: ')
+		all_users.append(user5)
 	else:
 		print 'Invalid choice.'
 	
