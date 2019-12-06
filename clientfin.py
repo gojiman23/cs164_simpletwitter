@@ -65,7 +65,7 @@ def view_handler(s):
 	if msg != 'cancel':
 		if msg == 'all':
 			newlist = s.recv(1024)	#wait for message list
-			print 'New messages: ' + newlist[27:]
+			print 'New messages: ' + newlist
 		elif msg == 'one':
 			newlist = s.recv(1024)	#wait for message list
 			print 'Subscriptions to choose from: ' + newlist
@@ -87,6 +87,8 @@ def edit_handler(s):
 		msg = s.recv(1024)
 		if msg == 'cancel':
 			print 'Going back'
+		elif msg == 'suberr':
+			print 'You cannot subscribe to yourself.'
 		elif msg == '0':
 			print 'Invalid name.'
 		else:

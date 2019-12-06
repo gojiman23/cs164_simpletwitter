@@ -23,31 +23,21 @@ msgCount = 0
 counter = 0
 #user class
 class User:
-	un = ''
-	pw = ''
-	subList = []
-	msgList = defaultdict(list)
-	hashList = defaultdict(list)
-	numUnread = 0
-	msg_rcvd = 0					#bit to store if new message received while logged in
-	to_send = "New message from "		#holder to send out to a logged in user
+	def __init__(self, user, passw):
+		self.un = user
+		self.pw = passw
+		self.subList = []
+		self.msgList = defaultdict(list)
+		self.hashList = defaultdict(list)
+		self.numUnread = 0
+		self.msg_rcvd = 0					#bit to store if new message received while logged in
+		self.to_send = "New message from "		#holder to send out to a logged in user
 	
 #hard-coding users
-user1 = User()
-user1.un = "Bob"
-user1.pw = "Bobby"
-
-user2 = User()
-user2.un = "Tom"
-user2.pw = "Tommy"
-
-user3 = User()
-user3.un = "Rick"
-user3.pw = "Ricky"
-
-user4 = User()
-user4.un = "test"
-user4.pw = "test"
+user1 = User("test1", "test1")
+user2 = User("test2", "test2")
+user3 = User("test3", "test3")
+user4 = User("test", "test")
 
 all_users.append(user1)
 all_users.append(user2)
@@ -165,9 +155,6 @@ def newClient(conn, addr):
 				
 			elif choice == 'edit':
 				edit_handler(conn, curr)
-				user1.subList.append('hi')
-				for user in all_users:
-					print user.un + str(user.subList)
 
 			elif choice == 'post':
 				msgCount += msg_handler(conn, curr)
@@ -192,10 +179,10 @@ def view_handler(conn, curr):
 	d = conn.recv(1024)	
 	if d == 'all':
 		for item in curr.subList:
-			msgList = []
-			msgList.append(str(curr.msgList[item]))
-			msgList.append(' ')
-		#ready = conn.recv(1024)
+			if newList == '':
+				newList = newList + curr.un + ': ' + str(curr.msgList[item])
+			else:
+				newList = ', ' + newList + curr.un + ': ' + str(curr.msgList[item])
 		conn.send(newList)
 		print 'sent'
 	if d == 'one':
@@ -215,8 +202,7 @@ def edit_handler(conn, curr):
 		#receive name of person they want to subscribe to
 		name = conn.recv(1024)
 		if name == curr.un:
-			print 'You cannot subscribe to yourself.'
-			conn.send('cancel')
+			conn.send('suberr')
 		elif verify_un(name) != -1:
 			newname = name
 			curr.subList.append(name)
@@ -239,15 +225,6 @@ def edit_handler(conn, curr):
 		if verify_un(name) != -1:
 			curr.subList.remove(verify_un(name).un)
 		conn.send(str(curr.subList))
-	
-	#sublist seems to use single memory location
-	print newname
-	for user in all_users:
-		if user.un != curr.un:
-			if newname in user.subList:
-				user.subList.remove(newname)
-		print user.un + str(user.subList)
-
 
 def msg_handler(conn, curr):
 	msg_good = 0
@@ -278,7 +255,6 @@ def msg_handler(conn, curr):
 						#~ name.msgList[name.un].append(msg)
 						#~ name.numUnread += 1
 					user.msgList[name].append(msg)
-					print user.un + 'appended'
 			#~ #TODO: add to hash list - EC, don't need
 			#~ for hasht in item.hashList:
 				#~ if hashtag == hasht:
