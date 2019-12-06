@@ -165,6 +165,7 @@ def newClient(conn, addr):
 				
 			elif choice == 'edit':
 				edit_handler(conn, curr)
+				user1.subList.append('hi')
 				for user in all_users:
 					print user.un + str(user.subList)
 
@@ -207,6 +208,7 @@ def view_handler(conn, curr):
 
 def edit_handler(conn, curr):
 	global counter
+	newname = ''
 	#receive editing choice
 	d = conn.recv(1024)
 	if d == 'add':
@@ -216,7 +218,7 @@ def edit_handler(conn, curr):
 			print 'You cannot subscribe to yourself.'
 			conn.send('cancel')
 		elif verify_un(name) != -1:
-			#curr.subList.append(verify_un(name).un)
+			newname = name
 			curr.subList.append(name)
 			newsubs = ''
 			for item in curr.subList:
@@ -237,8 +239,16 @@ def edit_handler(conn, curr):
 		if verify_un(name) != -1:
 			curr.subList.remove(verify_un(name).un)
 		conn.send(str(curr.subList))
-	print counter
-	counter += 1
+	
+	#sublist seems to use single memory location
+	print newname
+	for user in all_users:
+		if user.un != curr.un:
+			if newname in user.subList:
+				user.subList.remove(newname)
+		print user.un + str(user.subList)
+
+
 def msg_handler(conn, curr):
 	msg_good = 0
 	while not msg_good:
