@@ -5,6 +5,8 @@ import sys  #for exit
 import time
 from socket import timeout
 
+logged_out = 0
+
 def login(s):
 	while(1):
 		logged_in = '0'
@@ -14,24 +16,32 @@ def login(s):
 			password = raw_input('Enter password : ')
 			s.send(password)
 
-			reply = s.recv(1024)				
+			reply = s.recv(1024)
+			print 'login received'				
 			logged_in = reply[0:1]
 			if logged_in == '0':
 				print "Invalid username and/or password. Please try again"
 		
 		print "Login success!\n"
 		
-		#accept notification of unread messages
+		ready = 'Ready to start'
+		s.send(ready)
+		#~ #accept notification of unread messages
 		messages = s.recv(1024)
-		print(messages)
+		print messages
 		
 		#deals with menu/choices
 		logged_out = 0
-		while(not logged_out):
+		while not logged_out:
 			#catch trash or new message
-			possible = s.recv(1024)
-			if possible[0:2] == 'New':
-				print possible
+			#~ possible = s.recv(1024)
+			#~ print 'received'
+			#~ if possible[0:2] == 'New':
+				#~ print possible
+			#~ elif possible[0:7]:
+				#~ print possible
+			#~ else:
+				#~ print 'skipped'
 			print '\nMenu: (type option to pick) \n See Offline Messages (view) \n Edit Subscriptions (edit) \n Post a message (post) \n Hashtag Search (hashtag) \n Logout (logout)'
 
 			choice = raw_input()
@@ -51,20 +61,20 @@ def login(s):
 
 def view_handler(s):
 	msg = raw_input('Would you like to see all of your unread messages or messages from one subscription? (all/one/cancel): ')
-	if msg == 'cancel':
-		print 'Going back'
-	else:
-		s.send(msg)
-		newlist = s.recv(1024)
+	s.send(msg)	#send user's choice
+	if msg != 'cancel':
 		if msg == 'all':
+			newlist = s.recv(1024)	#wait for message list
 			print 'New messages: ' + newlist[27:]
 		elif msg == 'one':
+			newlist = s.recv(1024)	#wait for message list
 			print 'Subscriptions to choose from: ' + newlist
 			msg = raw_input('Which subscription would you like to choose?: ')
 			s.send(msg)
 			newlist = s.recv(1024)
 			print 'Messages from ' + msg + ': ' + newlist
-		
+	else:
+		print 'Going back'	
 	
 	
 def edit_handler(s):
@@ -83,7 +93,7 @@ def edit_handler(s):
 			print 'New subscription list: ' + msg
 	elif msg == 'delete':
 		subscribed = s.recv(1024)
-		print 'Subscribers to choose from: ' + subscribed
+		print 'Subscribers to choose from: ' + str(subscribed)
 		name = raw_input('Who would you like to unsubscribe from?: ')
 		s.send(name)
 		newList = s.recv(1024)

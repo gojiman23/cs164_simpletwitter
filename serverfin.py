@@ -20,7 +20,7 @@ curr_users = []
 all_hashtags = defaultdict(list)
 
 msgCount = 0
-
+counter = 0
 #user class
 class User:
 	un = ''
@@ -61,10 +61,11 @@ def verify_un(name):
 			return item
 	return -1
 #check if password is valid		
-def verify_pw(name):
+def verify_pw(user, passw):
 	for item in all_users:
-		if item.pw == name:
-			return item
+		if item.un == user:
+			if item.pw == passw:
+				return item
 	return -1
 
 def admin(server):
@@ -112,6 +113,7 @@ def server_start():
 	return s
 	
 def newClient(conn, addr):
+	global msgCount
 	while (1):
 		logged_in = False
 		logged_out = False
@@ -120,7 +122,7 @@ def newClient(conn, addr):
 			username = conn.recv(1024)
 			
 			pw = conn.recv(1024)
-			if verify_un(username) != -1 and verify_pw(pw) != -1:
+			if verify_un(username) != -1 and verify_pw(username, pw) != -1:
 				print 'Client login successful'
 				conn.send('1')
 				logged_in = True
@@ -131,27 +133,29 @@ def newClient(conn, addr):
 		for item in all_users:
 			if item.un == username:
 				curr = item
+				break
 		
 		curr_users.append(curr)
 		print 'Current users: '
 		for item in curr_users:
 			print item.un
-		print 'Beginning simple twitter app'
+		#print 'Beginning simple twitter app'
+		
+		ready = conn.recv(1024)
 		#show user unread messages	
 		msg = 'Welcome to Twitter.\nYou have ' + str(curr.numUnread) + ' unread messages'
 		conn.send(msg)
-
+		
 		#menu handler
 		while not logged_out:
-			#send out message to logged in subscriber from previous iteration
-			if curr.msg_rcvd == 0:
-				conn.send('Filler')
-			else:
-				conn.send(curr.to_send)
-				#reset
-				curr.msg_rcvd = 0
-				curr.to_send = 'New message from '
-
+			#~ #send out message to logged in subscriber from previous iteration
+			#~ if curr.msg_rcvd == 0:
+				#~ conn.send('Filler')
+			#~ else:
+				#~ conn.send(curr.to_send)
+				#~ #reset
+				#~ curr.msg_rcvd = 0
+				#~ curr.to_send = 'New message from '
 
 			#receive client's choice
 			choice = conn.recv(1024)
@@ -161,15 +165,17 @@ def newClient(conn, addr):
 				
 			elif choice == 'edit':
 				edit_handler(conn, curr)
+				for user in all_users:
+					print user.un + str(user.subList)
 
 			elif choice == 'post':
-				msg_handler(conn, curr)
+				msgCount += msg_handler(conn, curr)
 				
 			elif choice == 'hashtag':
 				hash_handler(conn, curr)
 
 			elif choice == 'logout':
-				print 'Bye!'
+				print curr.un + ' has logged out.'
 				# msg = 'Logout successful.'
 				# conn.send(msg)		
 				logged_out = True
@@ -180,32 +186,41 @@ def newClient(conn, addr):
 				curr_users.remove(curr)	
 
 def view_handler(conn, curr):
+	newList = ''
 	#receive all/one choice
 	d = conn.recv(1024)	
 	if d == 'all':
-		conn.send(str(curr.msgList))
-	if d == 'one':
-		newList = ''
 		for item in curr.subList:
-			newList += item.un
+			msgList = []
+			msgList.append(str(curr.msgList[item]))
+			msgList.append(' ')
+		#ready = conn.recv(1024)
+		conn.send(newList)
+		print 'sent'
+	if d == 'one':
+		for item in curr.subList:
+			newList += item
 			newList += ', '
 		conn.send(newList)
 		choice = conn.recv(1024)
 		conn.send(str(curr.msgList[choice]))
 
 def edit_handler(conn, curr):
+	global counter
 	#receive editing choice
 	d = conn.recv(1024)
 	if d == 'add':
 		#receive name of person they want to subscribe to
 		name = conn.recv(1024)
-		if name = curr.un:
+		if name == curr.un:
 			print 'You cannot subscribe to yourself.'
-		if verify_un(name) != -1:
-			curr.subList.append(verify_un(name))
+			conn.send('cancel')
+		elif verify_un(name) != -1:
+			#curr.subList.append(verify_un(name).un)
+			curr.subList.append(name)
 			newsubs = ''
 			for item in curr.subList:
-				newsubs += item.un
+				newsubs += item
 				newsubs += ', '
 			conn.send(newsubs)
 		else:
@@ -220,13 +235,16 @@ def edit_handler(conn, curr):
 		conn.send(str(curr.subList))
 		name = conn.recv(1024)
 		if verify_un(name) != -1:
-			curr.subList.remove(verify_un(name))
+			curr.subList.remove(verify_un(name).un)
 		conn.send(str(curr.subList))
-		
+	print counter
+	counter += 1
 def msg_handler(conn, curr):
 	msg_good = 0
 	while not msg_good:
 		msg = conn.recv(1024)
+		if(msg) == 'cancel':
+			return 0
 		if len(msg) > 140:
 			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
 		else:
@@ -236,27 +254,28 @@ def msg_handler(conn, curr):
 	#TODO: add handler for multiple hashtags
 	hashtag = conn.recv(1024)
 	#adds message to list of subscribers
-	for item in all_users:
+	for user in all_users:
 		#avoids running for duplicates
-		if item.un != curr.un:
-			for name in item.subList:
+		if user.un != curr.un:
+			for name in user.subList:
 				#if user that posted in sub list of another logged in user
-				if curr.un == name.un:
-					#send msg immedidately if subscriber is logged in
-					if name.un in curr_users:
-						name.msg_rcvd = 1
-						name.to_send = name.to_send + curr.un + ': ' + msg
-					else:
-						name.msgList[name.un].append(msg)
-						name.numUnread += 1
-					
-			#TODO: add to hash list - EC, don't need
-			for hasht in item.hashList:
-				if hashtag == hasht:
-					item.msgList[hasht].append(msg)
-					item.numUnread += 1
+				if curr.un == name:
+					#~ #send msg immedidately if subscriber is logged in
+					#~ if name.un in curr_users:
+						#~ name.msg_rcvd = 1
+						#~ name.to_send = name.to_send + curr.un + ': ' + msg
+					#~ else:
+						#~ name.msgList[name.un].append(msg)
+						#~ name.numUnread += 1
+					user.msgList[name].append(msg)
+					print user.un + 'appended'
+			#~ #TODO: add to hash list - EC, don't need
+			#~ for hasht in item.hashList:
+				#~ if hashtag == hasht:
+					#~ item.msgList[hasht].append(msg)
+					#~ item.numUnread += 1
 	all_hashtags[hashtag].append(msg)
-	msgCount += 1
+	return 1
 	
 def hash_handler(conn, curr):
 	d = conn.recv(1024)
@@ -290,7 +309,6 @@ while 1:
 	client_msg = conn.recvfrom(1024)
 	#print client_msg[0]
 	conn.send('Server echo')
-		
 	start_new_thread(newClient, (conn, clientAddr,))
 	
 s.close()
