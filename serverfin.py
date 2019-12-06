@@ -18,6 +18,8 @@ all_users = []
 curr_users = []
 #list of all hashtags
 all_hashtags = defaultdict(list)
+#list of messages that need to be sent out
+to_send = defaultdict(list)
 
 msgCount = 0
 counter = 0
@@ -30,8 +32,7 @@ class User:
 		self.msgList = defaultdict(list)
 		self.hashList = defaultdict(list)
 		self.numUnread = 0
-		self.msg_rcvd = 0					#bit to store if new message received while logged in
-		self.to_send = "New message from "		#holder to send out to a logged in user
+		self.sock = socket.socket()
 	
 #hard-coding users
 user1 = User("test1", "test1")
@@ -105,16 +106,28 @@ def server_start():
 	
 	return s
 	
+def send_new_messages(conn):
+	d = conn.recv(1024)
+	for user in curr_users:
+		if to_send[user.un]:
+			temp = str(to_send[user.un]).replace('[\'', '')
+			temp = temp.replace('\']', '')
+			user.sock.send(temp)
+		#~ else:
+			#~ print 'sending garbage'
+			#~ user.sock.send('Garbage')
+	
 def newClient(conn, addr):
 	global msgCount
 	while (1):
 		logged_in = False
 		logged_out = False
+		
 		#receive/verify login credentials
 		while (not logged_in):
-			username = conn.recv(1024)
+			username = conn.recv(4096)
 			
-			pw = conn.recv(1024)
+			pw = conn.recv(4096)
 			if verify_un(username) != -1 and verify_pw(username, pw) != -1:
 				conn.send('1')
 				logged_in = True
@@ -126,50 +139,37 @@ def newClient(conn, addr):
 			if item.un == username:
 				curr = item
 				break
+				
+		#for message notification purposes
+		curr.sock = conn
 		
 		curr_users.append(curr)
 		print 'New login! Current users: '
 		for item in curr_users:
 			print item.un
 		print
-		#print 'Beginning simple twitter app'
 		
-		ready = conn.recv(1024)
+		ready = conn.recv(4096)
 		#show user unread messages	
 		msg = 'Welcome to Twitter.\nYou have ' + str(curr.numUnread) + ' unread messages.'
 		conn.send(msg)
 		
 		#menu handler
 		while not logged_out:
-			#~ #send out message to logged in subscriber from previous iteration
-			#~ if curr.msg_rcvd == 0:
-				#~ conn.send('Filler')
-			#~ else:
-				#~ conn.send(curr.to_send)
-				#~ #reset
-				#~ curr.msg_rcvd = 0
-				#~ curr.to_send = 'New message from '
-
-			#receive client's choice
-			choice = conn.recv(1024)
+			choice = conn.recv(4096)
 
 			if choice == 'view':
-				view_handler(conn, curr)
-				
+				view_handler(conn, curr)		
 			elif choice == 'edit':
 				edit_handler(conn, curr)
-
 			elif choice == 'post':
-				msgCount += msg_handler(conn, curr)
-				
+				msgCount += msg_handler(conn, curr)				
 			elif choice == 'hashtag':
 				hash_handler(conn, curr)
-
 			elif choice == 'logout':
-				print curr.un + ' has logged out.\n'
-				# msg = 'Logout successful.'
-				# conn.send(msg)		
+				print curr.un + ' has logged out.\n'		
 				logged_out = True
+				
 				#reset curr
 				curr.msgList = defaultdict(list)
 				curr.hashList = defaultdict(list)
@@ -179,7 +179,7 @@ def newClient(conn, addr):
 def view_handler(conn, curr):
 	newList = ''
 	#receive all/one choice
-	d = conn.recv(1024)	
+	d = conn.recv(4096)	
 	if d == 'all':
 		for item in curr.subList:
 			if newList == '':
@@ -187,22 +187,26 @@ def view_handler(conn, curr):
 			else:
 				newList = newList + ', ' + item + ': ' + str(curr.msgList[item])
 		conn.send(newList)
+		
 	if d == 'one':
 		for item in curr.subList:
 			newList += item
 			newList += ', '
 		conn.send(newList)
-		choice = conn.recv(1024)
+		choice = conn.recv(4096)
 		conn.send(str(curr.msgList[choice]))
+	
+	send_new_messages(conn)	
 
 def edit_handler(conn, curr):
 	global counter
 	newname = ''
 	#receive editing choice
-	d = conn.recv(1024)
+	d = conn.recv(4096)
+	
 	if d == 'add':
 		#receive name of person they want to subscribe to
-		name = conn.recv(1024)
+		name = conn.recv(4096)
 		if name == curr.un:
 			conn.send('suberr')
 		elif verify_un(name) != -1:
@@ -220,28 +224,36 @@ def edit_handler(conn, curr):
 				conn.send(curr.hashList)
 			else:
 				conn.send('0')
+				
 	elif d == 'delete':
 		#removes a subscription from the given list
 		conn.send(str(curr.subList))
-		name = conn.recv(1024)
+		name = conn.recv(4096)
 		if verify_un(name) != -1:
 			curr.subList.remove(verify_un(name).un)
 		conn.send(str(curr.subList))
 
+	send_new_messages(conn)
+
 def msg_handler(conn, curr):
 	msg_good = 0
+	
 	while not msg_good:
-		msg = conn.recv(1024)
+		msg = conn.recv(4096)
 		if(msg) == 'cancel':
+			send_new_messages(conn)
 			return 0
-		if len(msg) > 140:
+		elif len(msg) > 140:
 			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
-		else:
-			reply = 'Please enter any hashtags (enter ' ' if none): '
+		else:	
+			reply = 'Please enter any hashtags (separate with ' ', hit enter if none): '
 			msg_good = 1
 		conn.send(reply)
+		
 	#TODO: add handler for multiple hashtags
-	hashtag = conn.recv(1024)
+	reply = conn.recv(4096)
+	hashtags = [x.strip() for x in reply.split(' ') if x != ""]
+	
 	#adds message to list of subscribers
 	for user in all_users:
 		#avoids running for duplicates
@@ -249,30 +261,32 @@ def msg_handler(conn, curr):
 			for name in user.subList:
 				#if user that posted in sub list of another logged in user
 				if curr.un == name:
-					#~ #send msg immedidately if subscriber is logged in
-					#~ if name.un in curr_users:
-						#~ name.msg_rcvd = 1
-						#~ name.to_send = name.to_send + curr.un + ': ' + msg
-					#~ else:
-						#~ name.msgList[name.un].append(msg)
-					user.numUnread += 1
-					user.msgList[curr.un].append(msg)
+					#send msg immedidately if subscriber is logged in
+					if user in curr_users:
+						to_send[user.un].append(curr.un + ": " + msg)
+					else:
+						user.numUnread += 1
+						user.msgList[curr.un].append(msg)
 					
-			#~ #TODO: add to hash list - EC, don't need
+			#~ #TODO: add to hash list - EC
 			#~ for hasht in item.hashList:
 				#~ if hashtag == hasht:
 					#~ item.msgList[hasht].append(msg)
 					#~ item.numUnread += 1
 	
 	#add hashtag to main list
-	if hashtag != ' ':
-		all_hashtags[hashtag].append(msg)
-		
+	for tag in hashtags:
+		all_hashtags[tag].append(msg)
+	
+	send_new_messages(conn)	
+
 	return 1
 	
 def hash_handler(conn, curr):
-	d = conn.recv(1024)
+	d = conn.recv(4096)
+	
 	if d != 'cancel':
+		
 		#only send up to 10 hashtags
 		if len(all_hashtags[d]) <= 10:
 			conn.send(str(all_hashtags[d]))
@@ -280,6 +294,9 @@ def hash_handler(conn, curr):
 			max = len(all_hashtags[d])
 			min = max-10
 			conn.send(str(all_hashtags[d][min:max]))
+
+	send_new_messages(conn)	
+
 	
 
 # MAIN
@@ -294,13 +311,8 @@ start_new_thread(admin, (s, ))
 while 1:
 	#accept new connection
 	conn, clientAddr = s.accept()
-	
-	#display newly connected client
-	#print 'Connected with ' + clientAddr[0] 
-		
-				
-	client_msg = conn.recvfrom(1024)
-	#print client_msg[0]
+			
+	client_msg = conn.recvfrom(4096)
 	conn.send('Server echo')
 	start_new_thread(newClient, (conn, clientAddr,))
 	
