@@ -13,7 +13,7 @@ def receive(s):
 	read, write, error = select.select(socket_list, [], [], 1.5)
 	for sock in read:
 		data = sock.recv(1024)
-		if data != '0':
+		if data:
 			print('\nNew message(s): ' + data)
 			#~ receive(s)
 		#~ else:
@@ -71,7 +71,7 @@ def login(s):
 				print ('Returning to login page.\n')
 				logged_out = 1
 			
-			receive(s)
+			#~ receive(s)
 
 def view_handler(s):
 	msg = raw_input('Would you like to see all of your unread messages or messages from one subscription? (all/one/cancel): ')
@@ -159,8 +159,8 @@ def hash_handler(s):
 	#receive(s)	
 						
 # MAIN 
-host = ''
-port = 9551
+host = 'localhost'
+port = 9552
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

@@ -10,7 +10,7 @@ import string
 from collections import defaultdict
 
 HOST = ''  
-PORT = 9551 
+PORT = 9552 
 
 #list of all users
 all_users = []
@@ -177,8 +177,8 @@ def newClient(conn, addr):
 				curr.hashList = defaultdict(list)
 				curr.numUnread = 0
 				curr_users.remove(curr)	
-				
-			send_new_messages(conn)
+				#~ 
+			#~ send_new_messages(conn)
 
 def view_handler(conn, curr):
 	newList = ''
@@ -221,13 +221,13 @@ def edit_handler(conn, curr):
 				newsubs += item
 				newsubs += ', '
 			conn.send(newsubs)
-		else:
-			#TODO: fix hash sub
-			if name[0:4] == 'HASH:':
-				curr.hashList.append(name[6:])
-				conn.send(curr.hashList)
-			else:
-				conn.send('0')
+		#~ else:
+			#~ #TODO: fix hash sub
+			#~ if name[0:4] == 'HASH:':
+				#~ curr.hashList.append(name[6:])
+				#~ conn.send(curr.hashList)
+			#~ else:
+				#~ conn.send('0')
 				
 	elif d == 'delete':
 		#removes a subscription from the given list
@@ -266,9 +266,9 @@ def msg_handler(conn, curr):
 				#if user that posted in sub list of another logged in user
 				if curr.un == name:
 					#send msg immedidately if subscriber is logged in
-					if user in curr_users:
-						to_send[user.un].append(curr.un + ": " + msg + ', ')
-					else:
+					#~ if user in curr_users:
+						#~ to_send[user.un].append(curr.un + ": " + msg + ', ')
+					#~ else:
 						user.numUnread += 1
 						user.msgList[curr.un].append(msg)
 					
