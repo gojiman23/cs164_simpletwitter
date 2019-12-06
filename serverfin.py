@@ -63,21 +63,24 @@ def admin(server):
 	print '1. messagecount'
 	print '2. usercount'
 	print '3. new user'
+	print 'Enter the above commands at any time. \n'
 	
-	command = raw_input('Enter above commands at any time. \n')
-	
-	if command == 'messagecount':
-		print 'Total messages since start of server: ' + str(msgCount)
-	elif command == 'usercount':
-		print len(curr_users)
-	elif command == 'new user':
-		#hard-coded for now
-		user5 = User()
-		user5.un = raw_input('Enter the username for this user: ')
-		user5.un = raw_input('Enter the password for this user: ')
-		all_users.append(user5)
-	else:
-		print 'Invalid choice.'
+	while (1):
+		command = raw_input()
+		
+		if command == 'messagecount':
+			print 'Total messages since start of server: ' + str(msgCount) + '\n'
+		elif command == 'usercount':
+			print 'Current number of users: ' + str(len(curr_users)) + '\n'
+		elif command == 'new user':
+			#hard-coded for now
+			user = raw_input('Enter the username for this user: ')
+			passw = raw_input('Enter the password for this user: ')
+			user5 = User(user, passw)
+			all_users.append(user5)
+			print 'User ' + user + ' created.\n'
+		else:
+			print 'Invalid choice.'
 	
 
 def server_start():	 
@@ -128,7 +131,7 @@ def newClient(conn, addr):
 		print 'New login! Current users: '
 		for item in curr_users:
 			print item.un
-		print '\n'
+		print
 		#print 'Beginning simple twitter app'
 		
 		ready = conn.recv(1024)
@@ -254,12 +257,17 @@ def msg_handler(conn, curr):
 						#~ name.msgList[name.un].append(msg)
 					user.numUnread += 1
 					user.msgList[curr.un].append(msg)
+					
 			#~ #TODO: add to hash list - EC, don't need
 			#~ for hasht in item.hashList:
 				#~ if hashtag == hasht:
 					#~ item.msgList[hasht].append(msg)
 					#~ item.numUnread += 1
-	all_hashtags[hashtag].append(msg)
+	
+	#add hashtag to main list
+	if hashtag != ' ':
+		all_hashtags[hashtag].append(msg)
+		
 	return 1
 	
 def hash_handler(conn, curr):
