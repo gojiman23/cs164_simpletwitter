@@ -56,7 +56,7 @@ def login(s):
 			elif choice == 'hashtag':
 				hash_handler(s)
 			elif choice == 'logout':
-				print ('Returning to login page.')
+				print ('Returning to login page.\n')
 				logged_out = 1
 
 def view_handler(s):

@@ -113,7 +113,6 @@ def newClient(conn, addr):
 			
 			pw = conn.recv(1024)
 			if verify_un(username) != -1 and verify_pw(username, pw) != -1:
-				print 'Client login successful'
 				conn.send('1')
 				logged_in = True
 			else:
@@ -126,14 +125,15 @@ def newClient(conn, addr):
 				break
 		
 		curr_users.append(curr)
-		print 'Current users: '
+		print 'New login! Current users: '
 		for item in curr_users:
 			print item.un
+		print '\n'
 		#print 'Beginning simple twitter app'
 		
 		ready = conn.recv(1024)
 		#show user unread messages	
-		msg = 'Welcome to Twitter.\nYou have ' + str(curr.numUnread) + ' unread messages'
+		msg = 'Welcome to Twitter.\nYou have ' + str(curr.numUnread) + ' unread messages.'
 		conn.send(msg)
 		
 		#menu handler
@@ -163,7 +163,7 @@ def newClient(conn, addr):
 				hash_handler(conn, curr)
 
 			elif choice == 'logout':
-				print curr.un + ' has logged out.'
+				print curr.un + ' has logged out.\n'
 				# msg = 'Logout successful.'
 				# conn.send(msg)		
 				logged_out = True
@@ -180,11 +180,10 @@ def view_handler(conn, curr):
 	if d == 'all':
 		for item in curr.subList:
 			if newList == '':
-				newList = newList + curr.un + ': ' + str(curr.msgList[item])
+				newList = newList + item + ': ' + str(curr.msgList[item])
 			else:
-				newList = ', ' + newList + curr.un + ': ' + str(curr.msgList[item])
+				newList = newList + ', ' + item + ': ' + str(curr.msgList[item])
 		conn.send(newList)
-		print 'sent'
 	if d == 'one':
 		for item in curr.subList:
 			newList += item
@@ -235,9 +234,9 @@ def msg_handler(conn, curr):
 		if len(msg) > 140:
 			reply = 'Error: Message exceeds the character limit. Please try again or cancel'
 		else:
-			reply = 'Please enter any hashtags (hit enter if none): '
+			reply = 'Please enter any hashtags (enter ' ' if none): '
 			msg_good = 1
-	conn.send(reply)
+		conn.send(reply)
 	#TODO: add handler for multiple hashtags
 	hashtag = conn.recv(1024)
 	#adds message to list of subscribers
@@ -253,8 +252,8 @@ def msg_handler(conn, curr):
 						#~ name.to_send = name.to_send + curr.un + ': ' + msg
 					#~ else:
 						#~ name.msgList[name.un].append(msg)
-						#~ name.numUnread += 1
-					user.msgList[name].append(msg)
+					user.numUnread += 1
+					user.msgList[curr.un].append(msg)
 			#~ #TODO: add to hash list - EC, don't need
 			#~ for hasht in item.hashList:
 				#~ if hashtag == hasht:
@@ -265,14 +264,14 @@ def msg_handler(conn, curr):
 	
 def hash_handler(conn, curr):
 	d = conn.recv(1024)
-	
-	#only send up to 10 hashtags
-	if len(all_hashtags[d]) <= 10:
-		conn.send(str(all_hashtags[d]))
-	else:
-		max = len(all_hashtags[d])
-		min = max-10
-		conn.send(str(all_hashtags[d][min:max]))
+	if d != 'cancel':
+		#only send up to 10 hashtags
+		if len(all_hashtags[d]) <= 10:
+			conn.send(str(all_hashtags[d]))
+		else:
+			max = len(all_hashtags[d])
+			min = max-10
+			conn.send(str(all_hashtags[d][min:max]))
 	
 
 # MAIN
