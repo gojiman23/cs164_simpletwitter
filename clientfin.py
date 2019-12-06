@@ -10,11 +10,15 @@ logged_out = 0
 def receive(s):
 	socket_list = []
 	socket_list.append(s)
-	read, write, error = select.select(socket_list, [], [], 1)
+	read, write, error = select.select(socket_list, [], [], 1.5)
 	for sock in read:
-		data = sock.recv(4096)
-		print('\nNew message(s): ' + data)
-				
+		data = sock.recv(1024)
+		if data != '0':
+			print('\nNew message(s): ' + data)
+			#~ receive(s)
+		#~ else:
+			s.send('done receiving')
+					
 
 def login(s):
 	while(1):
@@ -67,6 +71,7 @@ def login(s):
 				print ('Returning to login page.\n')
 				logged_out = 1
 			
+			receive(s)
 
 def view_handler(s):
 	msg = raw_input('Would you like to see all of your unread messages or messages from one subscription? (all/one/cancel): ')
@@ -87,7 +92,7 @@ def view_handler(s):
 	else:
 		print 'Going back'	
 	
-	receive(s)	
+	#receive(s)	
 	
 def edit_handler(s):
 	msg = raw_input('Would you like to add or delete a subscription? (add/delete/cancel): ')
@@ -119,7 +124,7 @@ def edit_handler(s):
 	elif msg == 'cancel':
 		print 'Going back'
 	
-	receive(s)	
+	#receive(s)	
 
 def msg_handler(s):
 	msg_good = 0
@@ -140,7 +145,7 @@ def msg_handler(s):
 				msg_good = 1
 				s.send(hashtags)
 
-	receive(s)	
+	#receive(s)	
 	
 def hash_handler(s):
 	msg = raw_input('What hashtag would you like to search up?: ')
@@ -151,11 +156,11 @@ def hash_handler(s):
 		newlist = s.recv(4096)
 		print 'Messages under hashtag ' + msg + ': ' + newlist
 	
-	receive(s)	
+	#receive(s)	
 						
 # MAIN 
 host = ''
-port = 8888
+port = 9551
 
 try:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

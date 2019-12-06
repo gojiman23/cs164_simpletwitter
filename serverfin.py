@@ -9,8 +9,8 @@ import threading
 import string
 from collections import defaultdict
 
-HOST = ''   # Symbolic name meaning all available interfaces
-PORT = 8888 # Arbitrary non-privileged port
+HOST = ''  
+PORT = 9551 
 
 #list of all users
 all_users = []
@@ -107,15 +107,17 @@ def server_start():
 	return s
 	
 def send_new_messages(conn):
+	global to_send
 	d = conn.recv(1024)
 	for user in curr_users:
 		if to_send[user.un]:
 			temp = str(to_send[user.un]).replace('[\'', '')
 			temp = temp.replace('\']', '')
 			user.sock.send(temp)
-		#~ else:
-			#~ print 'sending garbage'
-			#~ user.sock.send('Garbage')
+			#user.sock.send('0')
+			user.sock.recv(1024)
+	
+	to_send = defaultdict(list)
 	
 def newClient(conn, addr):
 	global msgCount
@@ -175,6 +177,8 @@ def newClient(conn, addr):
 				curr.hashList = defaultdict(list)
 				curr.numUnread = 0
 				curr_users.remove(curr)	
+				
+			send_new_messages(conn)
 
 def view_handler(conn, curr):
 	newList = ''
@@ -196,7 +200,7 @@ def view_handler(conn, curr):
 		choice = conn.recv(4096)
 		conn.send(str(curr.msgList[choice]))
 	
-	send_new_messages(conn)	
+	#send_new_messages(conn)	
 
 def edit_handler(conn, curr):
 	global counter
@@ -233,7 +237,7 @@ def edit_handler(conn, curr):
 			curr.subList.remove(verify_un(name).un)
 		conn.send(str(curr.subList))
 
-	send_new_messages(conn)
+	#send_new_messages(conn)
 
 def msg_handler(conn, curr):
 	msg_good = 0
@@ -263,7 +267,7 @@ def msg_handler(conn, curr):
 				if curr.un == name:
 					#send msg immedidately if subscriber is logged in
 					if user in curr_users:
-						to_send[user.un].append(curr.un + ": " + msg)
+						to_send[user.un].append(curr.un + ": " + msg + ', ')
 					else:
 						user.numUnread += 1
 						user.msgList[curr.un].append(msg)
@@ -278,8 +282,8 @@ def msg_handler(conn, curr):
 	for tag in hashtags:
 		all_hashtags[tag].append(msg)
 	
-	send_new_messages(conn)	
-
+	#send_new_messages(conn)	
+	
 	return 1
 	
 def hash_handler(conn, curr):
@@ -295,7 +299,7 @@ def hash_handler(conn, curr):
 			min = max-10
 			conn.send(str(all_hashtags[d][min:max]))
 
-	send_new_messages(conn)	
+	#send_new_messages(conn)	
 
 	
 
